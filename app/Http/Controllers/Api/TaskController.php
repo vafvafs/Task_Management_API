@@ -10,9 +10,17 @@ class TaskController extends Controller
 {
     /**
      * GET /api/tasks
+     * Optional: ?include=user
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->query('include') === 'user') {
+            return response()->json(
+                Task::with('user')->get(),
+                200
+            );
+        }
+
         return response()->json(Task::all(), 200);
     }
 
@@ -25,7 +33,7 @@ class TaskController extends Controller
 
         if (! $task) {
             return response()->json([
-                'message' => 'Task not found.'
+                'message' => 'Tasks not found.'
             ], 404);
         }
 
@@ -37,19 +45,15 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
-        // 🔹 Check if title already exists
-        $exists = Task::where('title', $request->title)->exists();
+        $request->validate([
+            'title' => 'required|unique:tasks,title',
+            'description' => 'nullable'
+        ]);
 
-        if ($exists) {
-            return response()->json([
-                'message' => 'Title already exist'
-            ], 400);
-        }
-
-        // 🔹 Create task
         $task = Task::create([
             'title'       => $request->title,
             'description' => $request->description,
+            'user_id'     => $request->user()->id
         ]);
 
         return response()->json($task, 201);
@@ -64,11 +68,11 @@ class TaskController extends Controller
 
         if (! $task) {
             return response()->json([
-                'message' => 'Task not found.'
+                'message' => 'Tasks not found.'
             ], 404);
         }
 
-        // Optional: prevent duplicate title on update
+        // Prevent duplicate title on update
         if ($request->has('title')) {
             $exists = Task::where('title', $request->title)
                 ->where('id', '!=', $id)
@@ -81,7 +85,9 @@ class TaskController extends Controller
             }
         }
 
-        $task->update($request->only(['title', 'description']));
+        $task->update(
+            $request->only(['title', 'description'])
+        );
 
         return response()->json($task, 200);
     }
@@ -95,13 +101,28 @@ class TaskController extends Controller
 
         if (! $task) {
             return response()->json([
-                'message' => 'Task not found.'
+                'message' => 'Tasks not found.'
             ], 404);
         }
 
         $task->delete();
 
-        // 204 = No Content
-        return response()->noContent();
+        return response()->json(null, 204);
+    }
+
+    /**
+     * GET /api/tasks/{id}/user
+     */
+    public function user($id)
+    {
+        $task = Task::with('user')->find($id);
+
+        if (! $task) {
+            return response()->json([
+                'message' => 'Tasks not found.'
+            ], 404);
+        }
+
+        return response()->json($task->user, 200);
     }
 }

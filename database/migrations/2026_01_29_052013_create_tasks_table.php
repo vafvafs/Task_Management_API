@@ -11,13 +11,13 @@ return new class extends Migration
      */
    public function up(): void
 {
-    Schema::create('tasks', function (Blueprint $table) {
-        $table->id();
-        $table->string('title');
-        $table->text('description')->nullable();
-        $table->boolean('completed')->default(false);
-        $table->timestamps();
-    });
+   Schema::create('tasks', function (Blueprint $table) {
+    $table->id();
+    $table->string('title')->unique();
+    $table->text('description')->nullable();
+    $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+    $table->timestamps();
+});
 }
 
 
