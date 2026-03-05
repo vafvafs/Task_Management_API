@@ -1,0 +1,118 @@
+{
+  "info": {
+    "_postman_id": "task-management-api",
+    "name": "Task Management API (New Features)",
+    "description": "Profile photo upload/preview + Teams Excel export/import",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" },
+    { "key": "admin_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  pm.collectionVariables.set('admin_token', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": "{{base_url}}/api/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile Photos",
+      "item": [
+        {
+          "name": "Upload User Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "photo", "type": "file", "src": "" }]
+            },
+            "url": "{{base_url}}/api/users/1/profile-photo"
+          }
+        },
+        {
+          "name": "Preview User Profile Photo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/users/1/profile-photo"
+          }
+        },
+        {
+          "name": "Upload Team Profile Photo (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "photo", "type": "file", "src": "" }]
+            },
+            "url": "{{base_url}}/api/teams/1/profile-photo"
+          }
+        },
+        {
+          "name": "Preview Team Profile Photo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/teams/1/profile-photo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teams Excel",
+      "item": [
+        {
+          "name": "Export Teams (Excel) - Admin Only",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": "{{base_url}}/api/export/teams"
+          }
+        },
+        {
+          "name": "Import Teams (Excel) - Admin Only",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            },
+            "url": "{{base_url}}/api/import/teams"
+          }
+        }
+      ]
+    }
+  ]
+}
+

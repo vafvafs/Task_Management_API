@@ -3,54 +3,59 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\ProfilePhotoController;
+use App\Http\Controllers\Api\TeamExcelController;
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
 
-// AUTH
 Route::post('/register', [AuthController::class, 'register']);
+// Login: validates credentials, returns user + token for subsequent requests
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
-/*
-|--------------------------------------------------------------------------
-| Protected Routes (Sanctum)
-|--------------------------------------------------------------------------
-*/
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // AUTH
+    // Revoke current user's tokens (logout)
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | TASKS
-    |--------------------------------------------------------------------------
-    */
+    
+    Route::get('/tasks', [TaskController::class, 'index']);                    // List tasks; supports ?include=user
+    Route::post('/tasks', [TaskController::class, 'store']);                   // Create task (assigns to current user)
+    Route::get('/tasks/{task}', [TaskController::class, 'show']);             // Single task (404 if missing; policy for 403)
+    Route::patch('/tasks/{task}', [TaskController::class, 'update']);         // Update task
+    Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);       // Delete task (204)
+    Route::get('/tasks/{task}/user', [TaskController::class, 'user']);        // Get the user who owns this task
 
-    // CRUD
-    Route::get('/tasks', [TaskController::class, 'index']);     // GET /tasks?include=user
-    Route::post('/tasks', [TaskController::class, 'store']);   // POST /tasks
-    Route::get('/tasks/{id}', [TaskController::class, 'show']); // GET /tasks/:id
-    Route::patch('/tasks/{id}', [TaskController::class, 'update']); // PATCH /tasks/:id
-    Route::delete('/tasks/{id}', [TaskController::class, 'destroy']); // DELETE /tasks/:id
+  
+    Route::get('/teams', [TeamController::class, 'index']);                   // List teams; ?include=users
+    Route::get('/teams/{team}', [TeamController::class, 'show']);              // Single team; ?include=users
+    Route::get('/teams/{team}/profile-photo', [ProfilePhotoController::class, 'previewTeam']); // Preview team profile photo
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/export/teams', [TeamExcelController::class, 'export']);  // Export teams + members (Excel)
+        Route::post('/import/teams', [TeamExcelController::class, 'import']); // Import teams + members (Excel)
+        Route::post('/teams', [TeamController::class, 'store']);
+        Route::patch('/teams/{team}', [TeamController::class, 'update']);
+        Route::delete('/teams/{team}', [TeamController::class, 'destroy']);
+        Route::post('/teams/{team}/profile-photo', [ProfilePhotoController::class, 'uploadTeam']); // Upload team profile photo
+    });
+    Route::middleware('role:admin,team_leader')->group(function () {
+        Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);           // Body: { "user_id": 1 }
+        Route::delete('/teams/{team}/members/{user}', [TeamController::class, 'removeMember']);
+    });
 
-    // RELATIONSHIP
-    Route::get('/tasks/{id}/user', [TaskController::class, 'user']);
+   
+    Route::get('/users', [UserController::class, 'index']);                    // List users; supports ?include=tasks
+    Route::get('/users/{user}', [UserController::class, 'show']);             // Single user
+    Route::get('/users/{user}/tasks', [UserController::class, 'tasks']);      // Tasks belonging to this user
+    Route::get('/users/{user}/profile-photo', [ProfilePhotoController::class, 'previewUser']); // Preview user profile photo
+    Route::post('/users/{user}/profile-photo', [ProfilePhotoController::class, 'uploadUser']); // Upload user profile photo
 
-    /*
-    |--------------------------------------------------------------------------
-    | USERS
-    |--------------------------------------------------------------------------
-    */
+    // Only admin and team_leader can create users (enforced here and in UserPolicy)
+    Route::middleware('role:admin,team_leader')->group(function () {
+        Route::post('/users', [UserController::class, 'store']);
+    });
 
-    // GET /users?include=tasks
-    Route::get('/users', [UserController::class, 'index']);
-
-    // GET /users/:id/tasks
-    Route::get('/users/{id}/tasks', [UserController::class, 'tasks']);
+    // Update user: admin=any, team_leader=team members, user=self (enforced in controller via policy)
+    Route::patch('/users/{user}', [UserController::class, 'update']);
 });
